@@ -1,0 +1,54 @@
+BALANZA DEL SECADERO — NodeMCU ESP32S + HX711 + celda de carga de 1 kg
+=======================================================================
+
+QUÉ HACE
+  - Pesa el salame colgado (décimas de gramo, filtrado, avisa cuando el peso está estable).
+  - Página propia: http://balanza.local (o la IP que muestra el Monitor Serie al arrancar).
+    Muestra el peso y tiene Tarar, Calibrar y Borrar calibración.
+  - La cámara de curado la encuentra sola en la red (balanza.local), lee el peso cada segundo y
+    sigue la merma de la pieza testigo (pestaña Balanza de su web y Menú > Balanza del LCD).
+  - La tara y la calibración se guardan en la placa: un corte de luz NO la pone a cero.
+    (Solo la primera vez que arranca, sin tara guardada, se tara sola: arrancarla vacía.)
+
+CABLEADO
+  HX711 VCC -> 3V3        HX711 GND -> GND
+  HX711 DT  -> GPIO19     HX711 SCK -> GPIO18     (cambiar en config.h si hace falta)
+  Celda -> HX711:  rojo E+   negro E-   blanco A-   verde A+
+  (Si el peso sale negativo no importa: al calibrar se corrige solo.)
+
+LIBRERÍAS (Gestor de Librerías del IDE)
+  - HX711 Arduino Library (bogde)       — ya estaba instalada
+  Placa: esp32 by Espressif 3.x -> "ESP32 Dev Module".
+
+ANTES DE SUBIR
+  En config.h van WIFI_SSID y WIFI_PASS de la red de la casa (la misma que usa la cámara).
+  Si no conecta (o se deja "TU_RED_WIFI"), la balanza crea su propia red "Balanza-Secadero"
+  (sin clave): conectarse con el celular y abrir http://192.168.4.1
+
+CALIBRAR (una sola vez)
+  1) Balanza vacía, con el gancho/hilo puesto -> Tarar.
+  2) Colgar un peso conocido (paquete de 500 g, pesa) -> escribir los gramos -> Calibrar.
+  3) Esperar 2 s sin tocar. Listo: queda guardado.
+  También por Monitor Serie (115200, "Nueva línea"):  t  |  c500  |  r
+
+USO CON EL SALAME
+  Tarar con el gancho/hilo vacío y colgar la pieza testigo. En la web de la cámara:
+  Balanza > Pieza testigo > Empezar seguimiento. La cámara registra el peso sola cada 30 min,
+  calcula la merma y los días que faltan. NO volver a tarar con la pieza colgada.
+
+TEMPERATURA (la balanza está adentro de la cámara)
+  La cámara le manda su temperatura cada segundo y la balanza corrige el peso según cuánto
+  cambió desde la tara y la calibración. La tara y la calibración guardan su temperatura:
+  dejala vacía (usa la de la cámara) o tocá "Traer de la cámara" y corregila si querés.
+  Para que corrija bien hay que APRENDER LA DERIVA una vez:
+    1) Balanza vacía -> Aprender la deriva > Empezar. Dejarla 24 h sin tocar -> Terminar y aplicar.
+    2) Colgar un peso fijo (pesa o botella cerrada, nunca un salame) -> lo mismo, otras 24 h.
+  Si algo no anda (sin temperatura, corrección grande, celda muy fría) aparece un aviso
+  arriba del peso, en esta página y en la web de la cámara.
+
+ACTUALIZAR EL PROGRAMA SIN DESARMAR NADA
+  http://balanza.local/actualizar  (usuario y clave de OTA_USUARIO / OTA_CLAVE en config.h; cambiá la clave).
+  En el IDE: Programa > Exportar binario compilado, y subir el balanza.ino.bin.
+  La tara, la calibración y el aprendizaje no se pierden.
+
+API para la cámara: GET /api/peso?cam=1&t=<°C>  y  POST /api/orden (o=T | o=C500 | o=R | A | AF | AX | M1 | M0 | K..).
